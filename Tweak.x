@@ -350,38 +350,98 @@ static void AHKAfterSend(void) {
 //   RoomContentLogicController
 
 %hook BaseMsgContentLogicController
-- (void)SendTextMessage:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 { %orig; AHKAfterSend(); }
-- (void)SendTextMessageWithSolitaire:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 { %orig; AHKAfterSend(); }
+- (void)SendTextMessage:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessageWithSolitaire:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 {
+    %orig;
+    AHKAfterSend();
+}
 %end
 
 %hook WeixinContentLogicController
-- (void)SendTextMessage:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 { %orig; AHKAfterSend(); }
-- (void)SendTextMessageWithSolitaire:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 { %orig; AHKAfterSend(); }
+- (void)SendTextMessage:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessageWithSolitaire:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 {
+    %orig;
+    AHKAfterSend();
+}
 %end
 
 %hook EnterpriseMsgContentLogicController
-- (void)SendTextMessage:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 { %orig; AHKAfterSend(); }
-- (void)SendTextMessageWithSolitaire:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 { %orig; AHKAfterSend(); }
+- (void)SendTextMessage:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessageWithSolitaire:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 {
+    %orig;
+    AHKAfterSend();
+}
 %end
 
 %hook MassSendContentLogicController
-- (void)SendTextMessage:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 { %orig; AHKAfterSend(); }
-- (void)SendTextMessageWithSolitaire:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 { %orig; AHKAfterSend(); }
+- (void)SendTextMessage:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessageWithSolitaire:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 {
+    %orig;
+    AHKAfterSend();
+}
 %end
 
 %hook RoomContentLogicController
-- (void)SendTextMessage:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 { %orig; AHKAfterSend(); }
-- (void)SendTextMessageWithSolitaire:(id)arg1 { %orig; AHKAfterSend(); }
-- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 { %orig; AHKAfterSend(); }
+- (void)SendTextMessage:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 externInfo:(id)arg2 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessageWithSolitaire:(id)arg1 {
+    %orig;
+    AHKAfterSend();
+}
+- (void)SendTextMessage:(id)arg1 replyingMessage:(id)arg2 isPasted:(BOOL)arg3 {
+    %orig;
+    AHKAfterSend();
+}
 %end
 
 // ==================== Hook: 微信设置页入口 ====================
