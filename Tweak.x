@@ -478,9 +478,10 @@ static NSInteger AHKOrigSettingCount = -1;
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
         AHKSettingsViewController *vc = [[AHKSettingsViewController alloc]
             initWithStyle:UITableViewStyleInsetGrouped];
-        UINavigationController *nav = self.navigationController;
+        UIViewController *selfVC = (UIViewController *)self;
+        UINavigationController *nav = selfVC.navigationController;
         if (nav) [nav pushViewController:vc animated:YES];
-        else [self presentViewController:vc animated:YES completion:nil];
+        else [selfVC presentViewController:vc animated:YES completion:nil];
         return;
     }
     %orig;
