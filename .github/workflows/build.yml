@@ -26,6 +26,9 @@ jobs:
           mkdir -p $HOME/theos/sdks
           mv sdks-master/*.sdk $HOME/theos/sdks/
 
+      - name: Install ldid (signing tool)
+        run: brew install ldid
+
       - name: Build
         run: make package FINAL=1
 
@@ -35,5 +38,5 @@ jobs:
           name: AutoHideKeyboard
           path: |
             packages/*.deb
-            .theos/obj/release/AutoHideKeyboard.dylib
+            .theos/obj/*/AutoHideKeyboard.dylib
           if-no-files-found: error
