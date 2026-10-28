@@ -1,0 +1,39 @@
+name: Build AutoHideKeyboard
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "Tweak.x"
+      - "Makefile"
+      - "control"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Install iOS SDK
+        run: |
+          curl -L https://github.com/theos/sdks/archive/refs/heads/master.zip -o sdks.zip
+          unzip -q sdks.zip
+          mkdir -p $HOME/theos/sdks
+          mv sdks-master/*.sdk $HOME/theos/sdks/
+
+      - name: Build
+        run: make package FINAL=1
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoHideKeyboard
+          path: |
+            packages/*.deb
+            .theos/obj/release/AutoHideKeyboard.dylib
+          if-no-files-found: error

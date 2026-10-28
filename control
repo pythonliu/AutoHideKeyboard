@@ -1,0 +1,9 @@
+Package: com.user.autohidekeyboard
+Name: AutoHideKeyboard
+Version: 2.0.0
+Architecture: iphoneos-arm
+Description: 微信发送文字消息后自动收起键盘（含闲置收起、内嵌设置页）
+Maintainer: user
+Author: user
+Section: Tweaks
+Depends: mobilesubstrate
