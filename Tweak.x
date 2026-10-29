@@ -4,6 +4,7 @@
 // 目标: iOS 微信 (com.tencent.xin)
 
 #import <UIKit/UIKit.h>
+#import <objc/message.h>
 
 // ---------- 配置键 ----------
 static NSString * const kPrefEnabled  = @"AutoHideKeyboardEnabled";
@@ -488,3 +489,50 @@ static NSInteger AHKOrigSettingCount = -1;
 }
 
 %end
+
+// ==================== 插件收纳注册入口（与原版一致） ====================
+// 通过微信内部插件管理器 WCPluginsMgr 注册设置页，出现在微信的"插件收纳"列表中。
+// 微信启动早期管理器可能未就绪，按 2/5/10/20/30 秒重试。
+
+static void AHKRegisterToWCPlugins(void) {
+    static BOOL registered = NO;
+    if (registered) return;
+
+    @try {
+        Class mgrClass = %c(WCPluginsMgr);
+        if (!mgrClass) { AHKLog(@"wcplugins 未就绪，注册放弃"); return; }
+
+        id mgr = nil;
+        if ([mgrClass respondsToSelector:@selector(sharedInstance)]) {
+            mgr = ((id (*)(id, SEL))objc_msgSend)(mgrClass, @selector(sharedInstance));
+        }
+        if (!mgr) { AHKLog(@"wcplugins 未就绪，注册放弃"); return; }
+
+        SEL sel = @selector(registerControllerWithTitle:version:controller:);
+        if (![mgr respondsToSelector:sel]) {
+            AHKLog(@"wcplugins 接口不可用，注册放弃");
+            return;
+        }
+
+        AHKSettingsViewController *vc = [[AHKSettingsViewController alloc]
+            initWithStyle:UITableViewStyleInsetGrouped];
+        ((void (*)(id, SEL, id, id, id))objc_msgSend)(mgr, sel, @"自动收起键盘", kAHKVersion, vc);
+
+        registered = YES;
+        AHKLog(@"已注册到 wcplugins 收纳列表（自动收起键盘 v%@）", kAHKVersion);
+    }
+    @catch (NSException *e) {
+        AHKLog(@"wcplugins 注册异常: %@", e);
+    }
+}
+
+%ctor {
+    @autoreleasepool {
+        for (double delay in @[@2.0, @5.0, @10.0, @20.0, @30.0]) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                AHKRegisterToWCPlugins();
+            });
+        }
+    }
+}
