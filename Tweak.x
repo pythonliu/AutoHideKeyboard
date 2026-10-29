@@ -5,13 +5,14 @@
 
 #import <UIKit/UIKit.h>
 #import <objc/message.h>
+#import "milkfrog_b64.h"
 
 // ---------- 配置键 ----------
 static NSString * const kPrefEnabled  = @"AutoHideKeyboardEnabled";
 static NSString * const kPrefDelay    = @"AutoHideKeyboardDelay";
 static NSString * const kPrefSendOnly = @"AutoHideKeyboardSendOnly";
 
-static NSString * const kAHKVersion = @"2.1";
+static NSString * const kAHKVersion = @"1.0";
 
 // ---------- 配置读取 ----------
 static BOOL AHKEnabled(void) {
@@ -130,11 +131,28 @@ static void AHKAfterSend(void) {
     self.navigationItem.rightBarButtonItem =
         [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone
                                                       target:self action:@selector(doneTapped)];
+    // 页脚: 奶蛙跳舞 GIF 循环播放
+    NSData *gifData = [[NSData alloc] initWithBase64EncodedString:@(kMilkFrogGIFBase64) options:0];
+    UIImage *frogImg = gifData ? [UIImage imageWithData:gifData] : nil;
+    if (frogImg) {
+        UIImageView *iv = [[UIImageView alloc] initWithImage:frogImg];
+        CGFloat side = 118.0;
+        UIView *fv = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width ?: 320, side + 16)];
+        iv.frame = CGRectMake((CGRectGetWidth(fv.frame) - side) / 2.0, 8, side, side);
+        iv.contentMode = UIViewContentModeScaleAspectFit;
+        [fv addSubview:iv];
+        self.tableView.tableFooterView = fv;
+    }
 }
 
 - (void)doneTapped {
     [self.view endEditing:YES];
-    [self dismissViewControllerAnimated:YES completion:nil];
+    // 从插件列表进入时是 push 进导航栈的, dismiss 无效; 优先 pop 返回
+    if (self.navigationController && self.presentingViewController == nil) {
+        [self.navigationController popViewControllerAnimated:YES];
+    } else {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
 }
 
 // ---------- 延迟滑杆行 ----------
@@ -174,7 +192,7 @@ static void AHKAfterSend(void) {
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 1; }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return 4;
+    return 3;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
@@ -186,7 +204,7 @@ static void AHKAfterSend(void) {
             @"发送文字消息后，延迟指定时间自动收起键盘。\n"
             @"开启「仅发送后收起」时不再进行闲置检测；关闭时，输入闲置且输入框为空也会自动收起。\n"
             @"正在打拼音或输入框有草稿时不会误收。\n\n"
-            @"AutoHideKeyboard v%@ · 仅 Hook 微信文字发送与键盘行为，不联网、不读取聊天记录",
+            @"AutoHideKeyboard v%@·仅Hook微信文字发送与键盘行为，不联网、不读取聊天记录",
             kAHKVersion];
 }
 
@@ -227,50 +245,9 @@ static void AHKAfterSend(void) {
                 cell.accessoryView = [self delayAccessoryView];
                 break;
             }
-            case 3: { // 测试
-                cell.textLabel.text = @"立即测试收起";
-                cell.textLabel.textColor = [UIColor colorWithRed:0.0 green:0.48 blue:1.0 alpha:1.0];
-                cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-                cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-                break;
-            }
         }
     }
     return cell;
-}
-
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (indexPath.section == 0 && indexPath.row == 3) {
-        [self runHideTest];
-    }
-}
-
-// 立即测试收起: 收掉当前键盘并给出可见反馈
-- (void)runHideTest {
-    AHKGen++;
-    UIWindow *window = nil;
-    for (UIWindow *w in [UIApplication sharedApplication].windows) {
-        if (w.isKeyWindow) { window = w; break; }
-    }
-    BOOL keyboardUp = NO;
-    if (window) {
-        UIResponder *fr = nil;
-        if ([window respondsToSelector:@selector(firstResponder)]) {
-            fr = [window performSelector:@selector(firstResponder)];
-        }
-        keyboardUp = fr && ([fr isKindOfClass:[UITextView class]] || [fr isKindOfClass:[UITextField class]]
-                            || [fr conformsToProtocol:@protocol(UIKeyInput)]);
-        [window endEditing:YES];
-    }
-    NSString *msg = keyboardUp
-        ? @"已收起键盘 ✓"
-        : @"当前没有弹出的键盘。\n去聊天页发送一条消息，会按延迟时间自动收起。";
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil
-                                                                   message:msg
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleDefault handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)enabledChanged:(UISwitch *)sw {
