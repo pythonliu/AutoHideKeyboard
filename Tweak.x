@@ -528,7 +528,8 @@ static void AHKRegisterToWCPlugins(void) {
 
 %ctor {
     @autoreleasepool {
-        for (double delay in @[@2.0, @5.0, @10.0, @20.0, @30.0]) {
+        for (NSNumber *num in @[@2.0, @5.0, @10.0, @20.0, @30.0]) {
+            double delay = num.doubleValue;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
                            dispatch_get_main_queue(), ^{
                 AHKRegisterToWCPlugins();
