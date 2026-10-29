@@ -448,8 +448,17 @@ static void AHKAfterSend(void) {
 // ==================== Hook: 微信设置页入口 ====================
 // 在微信"我-设置"列表末尾加一行入口(类名随微信版本可能变化, 不存在时自动跳过)
 static NSInteger AHKOrigSettingCount = -1;
+static void AHKRegisterToWCPlugins(void);
+static void AHKRegisterOnActive(void);
 
 %hook NewSettingViewController
+
+- (void)viewDidLoad {
+    %orig;
+    // 打开设置页时兜底重试注册(此时登录态一定有效)
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{ AHKRegisterOnActive(); });
+}
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     NSInteger n = %orig;
@@ -492,20 +501,37 @@ static NSInteger AHKOrigSettingCount = -1;
 
 // ==================== 插件收纳注册入口（与原版一致） ====================
 // 通过微信内部插件管理器 WCPluginsMgr 注册设置页，出现在微信的"插件收纳"列表中。
-// 微信启动早期管理器可能未就绪，按 2/5/10/20/30 秒重试。
+// 注册依赖登录态（插件列表按账号刷新），因此：启动时重试 + 每次微信激活时重试 +
+// 打开设置页时兜底重试；已注册则跳过（微信内部按 title 作 key，重复注册是覆盖不是新增）。
+
+static BOOL gAHKRegistered = NO;
+static NSInteger gAHKActiveRetry = 0;
+
+static id AHKPluginsMgr(void) {
+    Class mgrClass = %c(WCPluginsMgr);
+    if (!mgrClass) return nil;
+
+    // 优先走微信标准服务总线 MMServiceCenter
+    Class scClass = %c(MMServiceCenter);
+    if (scClass && [scClass respondsToSelector:@selector(defaultCenter)]) {
+        id center = ((id (*)(id, SEL))objc_msgSend)(scClass, @selector(defaultCenter));
+        if (center && [center respondsToSelector:@selector(getService:)]) {
+            id mgr = ((id (*)(id, SEL, id))objc_msgSend)(center, @selector(getService:), mgrClass);
+            if (mgr) return mgr;
+        }
+    }
+    // 兜底: sharedInstance
+    if ([mgrClass respondsToSelector:@selector(sharedInstance)]) {
+        return ((id (*)(id, SEL))objc_msgSend)(mgrClass, @selector(sharedInstance));
+    }
+    return nil;
+}
 
 static void AHKRegisterToWCPlugins(void) {
-    static BOOL registered = NO;
-    if (registered) return;
+    if (gAHKRegistered) return;
 
     @try {
-        Class mgrClass = %c(WCPluginsMgr);
-        if (!mgrClass) { AHKLog(@"wcplugins 未就绪，注册放弃"); return; }
-
-        id mgr = nil;
-        if ([mgrClass respondsToSelector:@selector(sharedInstance)]) {
-            mgr = ((id (*)(id, SEL))objc_msgSend)(mgrClass, @selector(sharedInstance));
-        }
+        id mgr = AHKPluginsMgr();
         if (!mgr) { AHKLog(@"wcplugins 未就绪，注册放弃"); return; }
 
         SEL sel = @selector(registerControllerWithTitle:version:controller:);
@@ -518,7 +544,7 @@ static void AHKRegisterToWCPlugins(void) {
             initWithStyle:UITableViewStyleInsetGrouped];
         ((void (*)(id, SEL, id, id, id))objc_msgSend)(mgr, sel, @"自动收起键盘", kAHKVersion, vc);
 
-        registered = YES;
+        gAHKRegistered = YES;
         AHKLog(@"已注册到 wcplugins 收纳列表（自动收起键盘 v%@）", kAHKVersion);
     }
     @catch (NSException *e) {
@@ -526,14 +552,51 @@ static void AHKRegisterToWCPlugins(void) {
     }
 }
 
+// 微信每次激活/进入前台都尝试注册(登录完成后必触发), 最多 10 次
+static void AHKRegisterOnActive(void) {
+    if (gAHKRegistered || gAHKActiveRetry >= 10) return;
+    gAHKActiveRetry++;
+    AHKRegisterToWCPlugins();
+    if (!gAHKRegistered) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{ AHKRegisterOnActive(); });
+    }
+}
+
+%hook WCPluginsMgr
+
+- (id)init {
+    id r = %orig;
+    // 管理器真正实例化的时机即注册时机（比猜启动延迟可靠得多）
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{ AHKRegisterToWCPlugins(); });
+    return r;
+}
+
+%end
+
+%hook MainAppViewController
+
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    AHKRegisterOnActive();
+}
+
+%end
+
 %ctor {
     @autoreleasepool {
+        // 启动序列重试
         for (NSNumber *num in @[@2.0, @5.0, @10.0, @20.0, @30.0]) {
-            double delay = num.doubleValue;
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(num.doubleValue * NSEC_PER_SEC)),
                            dispatch_get_main_queue(), ^{
                 AHKRegisterToWCPlugins();
             });
         }
+        // 微信进入前台/激活时重试(登录完成后必触发)
+        [[NSNotificationCenter defaultCenter]
+            addObserverForName:UIApplicationDidBecomeActiveNotification
+            object:nil queue:nil
+            usingBlock:^(NSNotification *note) { AHKRegisterOnActive(); }];
     }
 }
