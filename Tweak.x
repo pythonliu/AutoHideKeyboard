@@ -10,9 +10,8 @@
 static NSString * const kPrefEnabled  = @"AutoHideKeyboardEnabled";
 static NSString * const kPrefDelay    = @"AutoHideKeyboardDelay";
 static NSString * const kPrefSendOnly = @"AutoHideKeyboardSendOnly";
-static NSString * const kPrefLog      = @"AutoHideKeyboardLog";
 
-static NSString * const kAHKVersion = @"2.0";
+static NSString * const kAHKVersion = @"2.1";
 
 // ---------- 配置读取 ----------
 static BOOL AHKEnabled(void) {
@@ -25,18 +24,12 @@ static BOOL AHKSendOnly(void) {
     return v ? [v boolValue] : NO;
 }
 
-static BOOL AHKLogEnabled(void) {
-    id v = [[NSUserDefaults standardUserDefaults] objectForKey:kPrefLog];
-    return v ? [v boolValue] : NO;
-}
-
 static NSTimeInterval AHKDelay(void) {
     double d = [[NSUserDefaults standardUserDefaults] doubleForKey:kPrefDelay];
     return d > 0 ? d : 0.2; // 默认 0.2 秒
 }
 
-#define AHKLog(fmt, ...) \
-    do { if (AHKLogEnabled()) NSLog((@"[AHK] " fmt), ##__VA_ARGS__); } while (0)
+#define AHKLog(fmt, ...) do {} while (0)
 
 // ---------- 核心状态 ----------
 static NSInteger AHKGen = 0;      // 活动代数: 新活动使挂起的收起失效
@@ -123,6 +116,7 @@ static void AHKAfterSend(void) {
 @implementation AHKSettingsViewController {
     UILabel *_delayValueLabel;
     UISlider *_delaySlider;
+    UIView *_delayAccessory;
 }
 
 - (instancetype)init {
@@ -146,22 +140,26 @@ static void AHKAfterSend(void) {
 // ---------- 延迟滑杆行 ----------
 - (UIView *)delayAccessoryView {
     if (!_delaySlider) {
-        _delaySlider = [[UISlider alloc] initWithFrame:CGRectMake(0, 0, 150, 30)];
+        _delaySlider = [[UISlider alloc] initWithFrame:CGRectMake(0, 0, 140, 30)];
         _delaySlider.minimumValue = 0.0;
         _delaySlider.maximumValue = 3.0;
         _delaySlider.value = (float)AHKDelay();
         [_delaySlider addTarget:self action:@selector(delayChanged:)
                  forControlEvents:UIControlEventValueChanged];
 
-        _delayValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 64, 30)];
+        _delayValueLabel = [[UILabel alloc] initWithFrame:CGRectMake(148, 0, 84, 30)];
         _delayValueLabel.textAlignment = NSTextAlignmentRight;
         _delayValueLabel.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightRegular];
         _delayValueLabel.text = [NSString stringWithFormat:@"%.2f 秒", AHKDelay()];
         if (@available(iOS 13.0, *)) {
             _delayValueLabel.textColor = [UIColor secondaryLabelColor];
         }
+
+        _delayAccessory = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 232, 30)];
+        [_delayAccessory addSubview:_delaySlider];
+        [_delayAccessory addSubview:_delayValueLabel];
     }
-    return _delaySlider;
+    return _delayAccessory;
 }
 
 - (void)delayChanged:(UISlider *)slider {
@@ -173,23 +171,21 @@ static void AHKAfterSend(void) {
 }
 
 // ---------- 表格 ----------
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 2; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 1; }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return section == 0 ? 4 : 1;
+    return 4;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    return section == 0 ? @"行为设置" : @"其他";
+    return @"行为设置";
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (section == 0) {
-        return @"发送文字消息后，延迟指定时间自动收起键盘。\n"
-               @"开启「仅发送后收起」时不再进行闲置检测；关闭时，输入闲置且输入框为空也会自动收起。\n"
-               @"正在打拼音或输入框有草稿时不会误收。";
-    }
-    return [NSString stringWithFormat:@"AutoHideKeyboard v%@ · 仅 Hook 微信文字发送与键盘行为，不联网、不读取聊天记录", kAHKVersion];
+    return @"发送文字消息后，延迟指定时间自动收起键盘。\n"
+           @"开启「仅发送后收起」时不再进行闲置检测；关闭时，输入闲置且输入框为空也会自动收起。\n"
+           @"正在打拼音或输入框有草稿时不会误收。\n\n"
+           [NSString stringWithFormat:@"AutoHideKeyboard v%@ · 仅 Hook 微信文字发送与键盘行为，不联网、不读取聊天记录", kAHKVersion];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -237,13 +233,6 @@ static void AHKAfterSend(void) {
                 break;
             }
         }
-    } else {
-        cell.textLabel.text = @"输出调试日志";
-        UISwitch *sw = [[UISwitch alloc] initWithFrame:CGRectZero];
-        sw.on = AHKLogEnabled();
-        [sw addTarget:self action:@selector(logChanged:)
-           forControlEvents:UIControlEventValueChanged];
-        cell.accessoryView = sw;
     }
     return cell;
 }
@@ -251,17 +240,35 @@ static void AHKAfterSend(void) {
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if (indexPath.section == 0 && indexPath.row == 3) {
-        // 测试: 立即收起当前键盘(测试模式不检查输入框是否为空)
-        AHKGen++;
-        UIWindow *window = nil;
-        for (UIWindow *w in [UIApplication sharedApplication].windows) {
-            if (w.isKeyWindow) { window = w; break; }
-        }
-        if (window) {
-            [window endEditing:YES];
-            AHKLog(@"test hide triggered");
-        }
+        [self runHideTest];
     }
+}
+
+// 立即测试收起: 收掉当前键盘并给出可见反馈
+- (void)runHideTest {
+    AHKGen++;
+    UIWindow *window = nil;
+    for (UIWindow *w in [UIApplication sharedApplication].windows) {
+        if (w.isKeyWindow) { window = w; break; }
+    }
+    BOOL keyboardUp = NO;
+    if (window) {
+        UIResponder *fr = nil;
+        if ([window respondsToSelector:@selector(firstResponder)]) {
+            fr = [window performSelector:@selector(firstResponder)];
+        }
+        keyboardUp = fr && ([fr isKindOfClass:[UITextView class]] || [fr isKindOfClass:[UITextField class]]
+                            || [fr conformsToProtocol:@protocol(UIKeyInput)]);
+        [window endEditing:YES];
+    }
+    NSString *msg = keyboardUp
+        ? @"已收起键盘 ✓"
+        : @"当前没有弹出的键盘。\n去聊天页发送一条消息，会按延迟时间自动收起。";
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil
+                                                                   message:msg
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)enabledChanged:(UISwitch *)sw {
@@ -271,11 +278,6 @@ static void AHKAfterSend(void) {
 
 - (void)sendOnlyChanged:(UISwitch *)sw {
     [[NSUserDefaults standardUserDefaults] setBool:sw.on forKey:kPrefSendOnly];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-}
-
-- (void)logChanged:(UISwitch *)sw {
-    [[NSUserDefaults standardUserDefaults] setBool:sw.on forKey:kPrefLog];
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
