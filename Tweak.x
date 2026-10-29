@@ -125,6 +125,11 @@ static void AHKAfterSend(void) {
     UISlider *_delaySlider;
 }
 
+- (instancetype)init {
+    // 微信插件列表通过类名实例化(可能调用 plain init), 统一走内缩分组样式
+    return [self initWithStyle:UITableViewStyleInsetGrouped];
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = @"自动收起键盘";
@@ -511,18 +516,18 @@ static id AHKPluginsMgr(void) {
     Class mgrClass = %c(WCPluginsMgr);
     if (!mgrClass) return nil;
 
-    // 优先走微信标准服务总线 MMServiceCenter
+    // 优先 sharedInstance: 第三方"插件收纳"兼容层(懒猫等)通常挂在这个入口
+    if ([mgrClass respondsToSelector:@selector(sharedInstance)]) {
+        id mgr = ((id (*)(id, SEL))objc_msgSend)(mgrClass, @selector(sharedInstance));
+        if (mgr) return mgr;
+    }
+    // 兜底: 微信标准服务总线 MMServiceCenter
     Class scClass = %c(MMServiceCenter);
     if (scClass && [scClass respondsToSelector:@selector(defaultCenter)]) {
         id center = ((id (*)(id, SEL))objc_msgSend)(scClass, @selector(defaultCenter));
         if (center && [center respondsToSelector:@selector(getService:)]) {
-            id mgr = ((id (*)(id, SEL, id))objc_msgSend)(center, @selector(getService:), mgrClass);
-            if (mgr) return mgr;
+            return ((id (*)(id, SEL, id))objc_msgSend)(center, @selector(getService:), mgrClass);
         }
-    }
-    // 兜底: sharedInstance
-    if ([mgrClass respondsToSelector:@selector(sharedInstance)]) {
-        return ((id (*)(id, SEL))objc_msgSend)(mgrClass, @selector(sharedInstance));
     }
     return nil;
 }
@@ -540,9 +545,9 @@ static void AHKRegisterToWCPlugins(void) {
             return;
         }
 
-        AHKSettingsViewController *vc = [[AHKSettingsViewController alloc]
-            initWithStyle:UITableViewStyleInsetGrouped];
-        ((void (*)(id, SEL, id, id, id))objc_msgSend)(mgr, sel, @"自动收起键盘", kAHKVersion, vc);
+        // 关键: controller 参数是"控制器类名字符串"而非实例, 微信用 NSClassFromString 实例化
+        ((void (*)(id, SEL, id, id, id))objc_msgSend)
+            (mgr, sel, @"自动收起键盘", kAHKVersion, @"AHKSettingsViewController");
 
         gAHKRegistered = YES;
         AHKLog(@"已注册到 wcplugins 收纳列表（自动收起键盘 v%@）", kAHKVersion);
