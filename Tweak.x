@@ -182,10 +182,12 @@ static void AHKAfterSend(void) {
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    return @"发送文字消息后，延迟指定时间自动收起键盘。\n"
-           @"开启「仅发送后收起」时不再进行闲置检测；关闭时，输入闲置且输入框为空也会自动收起。\n"
-           @"正在打拼音或输入框有草稿时不会误收。\n\n"
-           [NSString stringWithFormat:@"AutoHideKeyboard v%@ · 仅 Hook 微信文字发送与键盘行为，不联网、不读取聊天记录", kAHKVersion];
+    return [NSString stringWithFormat:
+            @"发送文字消息后，延迟指定时间自动收起键盘。\n"
+            @"开启「仅发送后收起」时不再进行闲置检测；关闭时，输入闲置且输入框为空也会自动收起。\n"
+            @"正在打拼音或输入框有草稿时不会误收。\n\n"
+            @"AutoHideKeyboard v%@ · 仅 Hook 微信文字发送与键盘行为，不联网、不读取聊天记录",
+            kAHKVersion];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
